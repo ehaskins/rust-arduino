@@ -19,9 +19,9 @@ fn delay_ms(rtt: &RTT, ms: u32) {
 unsafe fn main() -> ! {
     let p = sam3x8e::Peripherals::take().unwrap();
 
-    // Enable PIOB
+    // Enable peripheral clocks
     let pmc = p.PMC;
-    pmc.pmc_pcer0.write_with_zero(|w| w.pid12().set_bit());
+    pmc.pmc_pcer0.write_with_zero(|w| w.pid12().set_bit()); // PIOB
 
     // Configure RTT resolution to approx. 1ms
     let rtt = p.RTT;
