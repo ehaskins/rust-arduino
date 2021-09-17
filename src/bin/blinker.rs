@@ -8,37 +8,37 @@ use cortex_m_rt::entry;
 use sam3x8e::RTT;
 
 fn delay_ms(rtt: &RTT, ms: u32) {
-    // We're not considering overflow here, 32 bits can keep about 49 days in ms
-    let now = rtt.vr.read().bits();
-    let until = now + ms;
+  // We're not considering overflow here, 32 bits can keep about 49 days in ms
+  let now = rtt.vr.read().bits();
+  let until = now + ms;
 
-    while rtt.vr.read().bits() < until {}
+  while rtt.vr.read().bits() < until {}
 }
 
 #[entry]
 unsafe fn main() -> ! {
-    let p = sam3x8e::Peripherals::take().unwrap();
+  let p = sam3x8e::Peripherals::take().unwrap();
 
-    // Enable peripheral clocks
-    let pmc = p.PMC;
-    pmc.pmc_pcer0.write_with_zero(|w| w.pid12().set_bit()); // PIOB
+  // Enable peripheral clocks
+  let pmc = p.PMC;
+  pmc.pmc_pcer0.write_with_zero(|w| w.pid12().set_bit()); // PIOB
 
-    // Configure RTT resolution to approx. 1ms
-    let rtt = p.RTT;
-    rtt.mr.write_with_zero(|w| { w.rtpres().bits(0x20) });
+  // Configure RTT resolution to approx. 1ms
+  let rtt = p.RTT;
+  rtt.mr.write_with_zero(|w| w.rtpres().bits(0x20));
 
-    let piob = p.PIOB;
+  let piob = p.PIOB;
 
-    // Configure PIOB pin 27 (LED)
-    piob.per.write_with_zero(|w| w.p27().set_bit());
-    piob.oer.write_with_zero(|w| w.p27().set_bit());
-    piob.pudr.write_with_zero(|w| w.p27().set_bit());
+  // Configure PIOB pin 27 (LED)
+  piob.per.write_with_zero(|w| w.p27().set_bit());
+  piob.oer.write_with_zero(|w| w.p27().set_bit());
+  piob.pudr.write_with_zero(|w| w.p27().set_bit());
 
-    // On/off blinking
-    loop {
-        piob.sodr.write_with_zero(|w| w.p27().set_bit());
-        delay_ms(&rtt, 200);
-        piob.codr.write_with_zero(|w| w.p27().set_bit());
-        delay_ms(&rtt, 200);
-    }
+  // On/off blinking
+  loop {
+    piob.sodr.write_with_zero(|w| w.p27().set_bit());
+    delay_ms(&rtt, 200);
+    piob.codr.write_with_zero(|w| w.p27().set_bit());
+    delay_ms(&rtt, 200);
+  }
 }
