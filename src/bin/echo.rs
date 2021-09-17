@@ -78,16 +78,19 @@ unsafe fn main() -> ! {
   uart.brgr.write(|w| w.cd().bits(uart_clock_divisor as u16));
 
   // Enable uart rx and tx
-  uart
-    .cr
-    .write_with_zero(|w| w.rxen().set_bit().txen().set_bit());
+  uart.cr.write_with_zero(|w| {
+    w.rxen().set_bit();
+    w.txen().set_bit();
+    w
+  });
 
   // Configure pinmux for UART
   pioa.pdr.write_with_zero(|w| {
-    w.p8()
-      .set_bit() // RX
-      .p9()
-      .set_bit()
+    {
+      w.p8().set_bit(); // RX
+      w.p9().set_bit();
+      w
+    }
   }); // TX
 
   let sr = uart.sr.read();
@@ -123,14 +126,11 @@ fn configure_clock(pmc: &sam3x8e::PMC, efc0: &EFC0, efc1: &EFC1) {
     unsafe {
       // Enable crystal oscillator
       pmc.ckgr_mor.write_with_zero(|w| {
-        w.key()
-          .bits(0x37) // magic
-          .moscxtst()
-          .bits(8) // test for 8 slow cycles
-          .moscrcen()
-          .set_bit() // enable on-chip RC
-          .moscxten()
-          .set_bit() // enable crystal oscillator
+        w.key().bits(0x37); // magic
+        w.moscxtst().bits(8); // test for 8 slow cycles
+        w.moscrcen().set_bit(); // enable on-chip RC
+        w.moscxten().set_bit(); // enable crystal oscillator
+        w
       });
     }
 
@@ -140,16 +140,12 @@ fn configure_clock(pmc: &sam3x8e::PMC, efc0: &EFC0, efc1: &EFC1) {
   // Switch main oscillator from RC to external oscillator
   unsafe {
     pmc.ckgr_mor.write(|w| {
-      w.key()
-        .bits(0x37)
-        .moscxtst()
-        .bits(8)
-        .moscrcen()
-        .set_bit()
-        .moscxten()
-        .set_bit()
-        .moscsel()
-        .set_bit()
+      w.key().bits(0x37); //magic
+      w.moscxtst().bits(8); // test for 8 slow cycles
+      w.moscrcen().set_bit(); // enable on-chip RC
+      w.moscxten().set_bit(); // enable crystal oscillator
+      w.moscsel().set_bit(); // select crystal oscillator as main clock
+      w
     });
   }
   while pmc.pmc_sr.read().moscsels().bit_is_clear() {}
@@ -163,14 +159,13 @@ fn configure_clock(pmc: &sam3x8e::PMC, efc0: &EFC0, efc1: &EFC1) {
   // Enable and configure PLLA to generate 168mhz (12mhz crystal * 14)
   unsafe {
     pmc.ckgr_pllar.write_with_zero(|w| {
-      w.one()
-        .set_bit()
-        .pllacount()
-        .bits(0x3f)
-        .diva()
-        .bits(1)
-        .mula()
-        .bits(13) // val + 1 = 14 * 12 = 168mhz
+      {
+        w.one().set_bit(); // required for all writes
+        w.pllacount().bits(0x3f); // test for 0x3f cycles
+        w.diva().bits(1); // bypass divider
+        w.mula().bits(13); // multiply main clock by 14 (val + 1)
+        w
+      }
     });
   }
   while pmc.pmc_sr.read().locka().bit_is_clear() {}
@@ -180,6 +175,10 @@ fn configure_clock(pmc: &sam3x8e::PMC, efc0: &EFC0, efc1: &EFC1) {
   while pmc.pmc_sr.read().mckrdy().bit_is_clear() {}
 
   // Switch master clock source to PLLA
-  pmc.pmc_mckr.write(|w| w.css().plla_clk().pres().clk_2());
+  pmc.pmc_mckr.write(|w| {
+    w.css().plla_clk(); // Select PLLA as master clock
+    w.pres().clk_2(); // Divide source clock by 2
+    w
+  });
   while pmc.pmc_sr.read().mckrdy().bit_is_clear() {}
 }
